@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Absen Sekolah | Cyber Professional</title>
+    <meta name="description" content="Sistem Kehadiran Cerdas & Profesional untuk Sekolah Masa Depan">
+    <!-- PWA -->
+    <meta name="theme-color" content="#6366f1">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="https://via.placeholder.com/192?text=Absensi">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Scripts & SDKs -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    
+    <!-- Firebase SDK (v9 Compatibility) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- Branding Header -->
+    <div class="branding">
+        <div class="container">
+            <h1><i class="fas fa-id-badge"></i> Absen Sekolah</h1>
+            <p>Sistem Kehadiran Cerdas & Profesional untuk Sekolah Masa Depan</p>
+        </div>
+        <div class="moving-text-container">
+            <div id="moving-school-name" class="moving-text">SELAMAT DATANG DI PORTAL ABSENSI SEKOLAH DIGITAL</div>
+        </div>
+    </div>
+
+    <div class="container" style="z-index: 500;">
+
+        <!-- View: Landing -->
+        <section id="view-landing" class="view active animate-in">
+            <div class="selection-grid">
+                <div class="role-card card" onclick="window.app.showSiswa()">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h2>Portal Siswa</h2>
+                    <p>Masuk untuk melakukan absensi harian dan pantau rekap kehadiran.</p>
+                </div>
+                <div class="role-card card" onclick="window.app.showLoginGuru()">
+                    <i class="fas fa-user-tie"></i>
+                    <h2>Portal Guru</h2>
+                    <p>Kelola sesi absensi kelas dan unduh laporan akademik.</p>
+                </div>
+                <div class="role-card card" onclick="window.app.showLoginOperator()">
+                    <i class="fas fa-user-shield"></i>
+                    <h2>Administrator</h2>
+                    <p>Kendali penuh manajemen data sekolah dan konfigurasi sistem.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- View: Siswa Login -->
+        <section id="view-siswa" class="view animate-in">
+            <div id="siswa-login-form">
+                <div class="card" style="max-width: 450px; margin: 0 auto;">
+                    <button class="btn btn-secondary mb-6" onclick="window.app.showLanding()"><i
+                            class="fas fa-arrow-left"></i> Kembali</button>
+                    <h2 class="text-center mb-6"><i class="fas fa-user-graduate"></i> Akses Siswa</h2>
+                    <input type="text" id="siswa-nim-login" class="input-field" placeholder="NISN">
+                    <input type="password" id="siswa-pwd-login" class="input-field" placeholder="Password">
+                    <button class="btn btn-primary" style="width: 100%;"
+                        onclick="window.app.handleSiswaLogin()">Masuk</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- View: Siswa Dashboard (full-width like Guru) -->
+        <section id="view-dashboard-siswa" class="view animate-in">
+            <div class="card card-floating dashboard-header-card dashboard-header-emerald mb-6">
+                <div class="moving-text-container">
+                    <div id="moving-school-siswa" class="moving-text">NAMA SEKOLAH</div>
+                </div>
+                <div class="dashboard-header-content">
+                    <div class="profile-area">
+                        <img id="siswa-profile-img" src="https://via.placeholder.com/70?text=Siswa" alt="Foto Siswa">
+                        <label for="siswa-photo-input" class="camera-btn"><i class="fas fa-camera"></i></label>
+                        <input type="file" id="siswa-photo-input" accept="image/*" style="display:none;"
+                            onchange="window.app.handlePhotoUpload(event, 'siswa')">
+                    </div>
+                    <div style="flex: 1;">
+                        <h2 id="siswa-name-display" style="margin:0;">Halo</h2>
+                        <p id="siswa-nim-display" class="text-dim" style="margin:0;"></p>
+                    </div>
+                    <button class="btn btn-secondary" style="width: auto;" onclick="window.app.logoutSiswa()"><i
+                            class="fas fa-sign-out-alt"></i> Keluar</button>
+                </div>
+            </div>
+
+            <!-- Scan QR Section -->
+            <div class="panel-section panel-cyan mb-6">
+                <div class="panel-icon"><i class="fas fa-qrcode"></i></div>
+                <h3 class="panel-title">Scan QR Absensi</h3>
+                <p class="panel-desc">Scan QR Code dari guru untuk mencatat kehadiran Anda</p>
+                <button class="btn btn-primary mb-4" onclick="window.app.startStudentScanner()"><i
+                        class="fas fa-qrcode"></i> Mulai Scan</button>
+                <div id="siswa-scan-area" style="display: none;">
+                    <div id="siswa-reader"
+                        style="width: 100%; border-radius: 12px; overflow: hidden; position: relative;">
+                        <button class="scanner-close-btn" onclick="window.app.stopStudentScanner()"><i
+                                class="fas fa-times"></i></button>
+                    </div>
+                    <button class="btn btn-danger mt-4" style="width: 100%;"
+                        onclick="window.app.stopStudentScanner()"><i class="fas fa-video-slash"></i> Hentikan
+                        Scanner</button>
+                </div>
+            </div>
+
+            <!-- Mata Pelajaran Siswa -->
+            <div class="panel-section panel-blue mb-6">
+                <div class="panel-icon"><i class="fas fa-book-open"></i></div>
+                <h3 class="panel-title">Mata Pelajaran Saya</h3>
+                <p class="panel-desc">Daftar mata pelajaran sesuai kelas Anda</p>
+                <div id="siswa-subject-grid" class="subject-grid"></div>
+            </div>
+
+    </div>
+    </section>
+
+    <!-- View: Login (Unified for Guru & Operator) -->
+    <section id="view-login" class="view animate-in">
+        <div class="card" style="max-width: 450px; margin: 0 auto;">
+            <button class="btn btn-secondary mb-6" onclick="window.app.showLanding()"><i class="fas fa-arrow-left"></i>
+                Kembali</button>
+            <h2 id="login-title" class="text-center mb-6">Login</h2>
+            <input type="text" id="login-id" class="input-field" placeholder="Username">
+            <input type="password" id="login-pwd" class="input-field" placeholder="Password">
+            <button class="btn btn-primary" style="width: 100%;" onclick="window.app.handleLogin()">Masuk</button>
+            <p id="login-role-tag" class="text-center mt-4 text-muted"></p>
+        </div>
+    </section>
+
+    <!-- View: Dashboard Guru -->
+    <section id="view-dashboard-guru" class="view animate-in">
+        <div class="card card-floating dashboard-header-card mb-6">
+            <div class="moving-text-container">
+                <div id="moving-school-guru" class="moving-text">NAMA SEKOLAH</div>
+            </div>
+            <div class="dashboard-header-content">
+                <div class="profile-area">
+                    <img id="teacher-profile-img" src="https://via.placeholder.com/70?text=Guru" alt="Foto Guru">
+                    <label for="teacher-photo-input" class="camera-btn"><i class="fas fa-camera"></i></label>
+                    <input type="file" id="teacher-photo-input" accept="image/*" style="display:none;"
+                        onchange="window.app.handlePhotoUpload(event, 'teacher')">
+                </div>
+                <div style="flex: 1;">
+                    <h2 id="welcome-text" style="margin:0;">Selamat Datang, Guru</h2>
+                    <p class="text-dim" style="margin:0;">Dashboard Mata Pelajaran</p>
+                </div>
+                <button class="btn btn-secondary" style="width: auto;" onclick="window.app.logout()"><i
+                        class="fas fa-sign-out-alt"></i> Keluar</button>
+            </div>
+        </div>
+
+        <div class="panel-section panel-purple mb-6">
+            <div class="panel-icon"><i class="fas fa-book"></i></div>
+            <h3 class="panel-title">Mata Pelajaran Anda</h3>
+            <p class="panel-desc">Klik mata pelajaran untuk mengelola sesi absensi</p>
+            <div id="active-subject-grid" class="subject-grid"></div>
+        </div>
+    </section>
+
+    <!-- View: Dashboard Operator -->
+    <section id="view-dashboard-operator" class="view animate-in">
+        <div class="card card-floating dashboard-header-card mb-6">
+            <div class="moving-text-container">
+                <div id="moving-school-name-opt" class="moving-text">NAMA SEKOLAH</div>
+            </div>
+            <div class="dashboard-header-content">
+                <div>
+                    <h2 style="margin:0;"><i class="fas fa-shield-alt"></i> Admin Panel</h2>
+                    <p class="text-dim" style="margin:0;">Kontrol Penuh Sistem Sekolah</p>
+                </div>
+                <button class="btn btn-secondary" style="width: auto;" onclick="window.app.logout()"><i
+                        class="fas fa-sign-out-alt"></i> Keluar</button>
+            </div>
+        </div>
+
+        <!-- Pengaturan Sekolah -->
+        <div class="panel-section panel-indigo mb-6">
+            <div class="panel-icon"><i class="fas fa-school"></i></div>
+            <h3 class="panel-title">Pengaturan Sekolah</h3>
+            <p class="panel-desc">Konfigurasi informasi dasar sekolah Anda</p>
+            <div class="input-group">
+                <label>Nama Sekolah</label>
+                <input type="text" id="opt-school-name" class="input-field" placeholder="Masukkan Nama Sekolah">
+            </div>
+            <button class="btn btn-primary" style="width: auto;" onclick="window.app.saveSchoolConfig()"><i
+                    class="fas fa-save"></i> Simpan</button>
+        </div>
+
+        <!-- Manajemen Akun Guru -->
+        <div class="panel-section panel-teal mb-6">
+            <div class="panel-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+            <h3 class="panel-title">Manajemen Akun Guru</h3>
+            <p class="panel-desc">Tambah, kelola, dan atur akun pengajar</p>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                <input type="text" id="opt-teacher-name" class="input-field" placeholder="Nama Lengkap Guru"
+                    style="flex: 2; margin-bottom: 0;">
+                <input type="text" id="opt-teacher-id" class="input-field" placeholder="Username"
+                    style="flex: 1; margin-bottom: 0;">
+                <input type="password" id="opt-teacher-pwd" class="input-field" placeholder="Password"
+                    style="flex: 1; margin-bottom: 0;">
+                <button class="btn btn-primary" style="width: auto;" onclick="window.app.addTeacher()"><i
+                        class="fas fa-plus"></i> Tambah</button>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Foto</th>
+                            <th>Nama / Username</th>
+                            <th>Sandi</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teacher-list-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Manajemen Akun Siswa -->
+        <div class="panel-section panel-rose mb-6">
+            <div class="panel-icon"><i class="fas fa-users"></i></div>
+            <h3 class="panel-title">Manajemen Akun Siswa</h3>
+            <p class="panel-desc">Daftarkan dan kelola data siswa sekolah</p>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                <input type="text" id="opt-new-siswa-name" class="input-field" placeholder="Nama Lengkap Siswa"
+                    style="flex: 2; margin-bottom: 0;">
+                <input type="text" id="opt-new-siswa-nim" class="input-field" placeholder="NISN"
+                    style="flex: 1; margin-bottom: 0;">
+                <input type="password" id="opt-new-siswa-pwd" class="input-field" placeholder="Password"
+                    style="flex: 1; margin-bottom: 0;">
+                <select id="opt-new-siswa-class" class="input-field" style="flex: 1; margin-bottom: 0;">
+                    <option value="">Pilih Kelas</option>
+                </select>
+                <button class="btn btn-primary" style="width: auto;" onclick="window.app.addStudent()"><i
+                        class="fas fa-plus"></i> Tambah</button>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Foto</th>
+                            <th>Nama</th>
+                            <th>NISN / Sandi</th>
+                            <th>Kelas</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="student-list-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Manajemen Akademik -->
+        <div class="panel-section panel-amber mb-6">
+            <div class="panel-icon"><i class="fas fa-cogs"></i></div>
+            <h3 class="panel-title">Manajemen Akademik</h3>
+            <p class="panel-desc">Kelola semester, kelas, dan mata pelajaran</p>
+
+            <!-- Semester -->
+            <div class="sub-panel sub-panel-blue mb-6">
+                <div class="sub-panel-header">
+                    <i class="fas fa-calendar-alt"></i>
+                    <h4>Semester</h4>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="opt-new-semester" class="input-field"
+                        placeholder="Nama Semester (cth: Ganjil 2025)" style="flex: 1; margin-bottom: 0;">
+                    <button class="btn btn-primary" style="width: auto;" onclick="window.app.addSemester()"><i
+                            class="fas fa-plus"></i></button>
+                </div>
+                <div id="semester-list" class="mt-4"></div>
+            </div>
+
+            <!-- Kelas -->
+            <div class="sub-panel sub-panel-green mb-6">
+                <div class="sub-panel-header">
+                    <i class="fas fa-door-open"></i>
+                    <h4>Kelas</h4>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="opt-new-class" class="input-field" placeholder="Nama Kelas (cth: X-IPA-1)"
+                        style="flex: 1; margin-bottom: 0;">
+                    <button class="btn btn-primary" style="width: auto;" onclick="window.app.addClass()"><i
+                            class="fas fa-plus"></i></button>
+                </div>
+                <div id="class-list" class="mt-4"></div>
+            </div>
+
+            <!-- Master Mata Pelajaran -->
+            <div class="sub-panel sub-panel-purple mb-6">
+                <div class="sub-panel-header">
+                    <i class="fas fa-book"></i>
+                    <h4>Master Mata Pelajaran</h4>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="opt-new-master-subject" class="input-field"
+                        placeholder="Nama Mapel (cth: Matematika)" style="flex: 1; margin-bottom: 0;">
+                    <button class="btn btn-primary" style="width: auto;" onclick="window.app.addMasterSubject()"><i
+                            class="fas fa-plus"></i></button>
+                </div>
+                <div id="master-subject-list" class="mt-4"></div>
+            </div>
+
+            <!-- Penugasan Mata Pelajaran & Guru -->
+            <div class="sub-panel sub-panel-orange">
+                <div class="sub-panel-header">
+                    <i class="fas fa-link"></i>
+                    <h4>Penugasan Mata Pelajaran &amp; Guru</h4>
+                </div>
+                <div class="input-group">
+                    <label>Pilih Mata Pelajaran</label>
+                    <select id="opt-subject-master-select" class="input-field"></select>
+                </div>
+                <div class="input-group">
+                    <label>Pilih Semester</label>
+                    <select id="opt-subject-semester" class="input-field"></select>
+                </div>
+                <div class="input-group">
+                    <label>Pilih Kelas</label>
+                    <select id="opt-subject-class" class="input-field"></select>
+                </div>
+                <div class="input-group">
+                    <label>Pilih Guru Pengampu (Centang Guru)</label>
+                    <div id="opt-teacher-checkbox-list" class="checkbox-list-container"></div>
+                </div>
+                <button class="btn btn-success" onclick="window.app.addSubjectByOperator()"><i
+                        class="fas fa-plus-circle"></i> Tugaskan</button>
+
+                <div class="table-wrapper mt-6">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Mata Pelajaran</th>
+                                <th>Kelas</th>
+                                <th>Semester</th>
+                                <th>Guru</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subject-assignment-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sinkronisasi & Backup (PENTING UNTUK PINDAH PERANGKAT) -->
+        <div class="panel-section panel-cyan mb-6">
+            <div class="panel-icon"><i class="fas fa-sync-alt"></i></div>
+            <h3 class="panel-title">Sinkronisasi & Backup</h3>
+            <p class="panel-desc">Gunakan fitur ini untuk memindahkan data dari Laptop ke HP atau sebaliknya.</p>
+            
+            <div class="card" style="background: var(--bg-section); border: 1px dashed var(--primary); padding: 1.5rem; margin-bottom: 1rem;">
+                <h4 style="margin-bottom: 0.5rem; color: var(--primary);"><i class="fas fa-laptop"></i> Langkah 1: Cadangkan Data (di Laptop)</h4>
+                <p class="small text-dim mb-4">Klik tombol di bawah untuk mengunduh semua data sekolah Anda menjadi satu file cadangan (.json).</p>
+                <button class="btn btn-primary" onclick="window.app.backupData()"><i class="fas fa-download"></i> Unduh File Cadangan</button>
+            </div>
+
+            <div class="card" style="background: var(--bg-section); border: 1px dashed var(--success); padding: 1.5rem;">
+                <h4 style="margin-bottom: 0.5rem; color: var(--success);"><i class="fas fa-mobile-alt"></i> Langkah 2: Pulihkan Data (di HP)</h4>
+                <p class="small text-dim mb-4">Kirim file hasil unduhan tadi ke HP (via WA/Email), lalu buka aplikasi di HP dan pilih file tersebut di bawah ini.</p>
+                <input type="file" id="restore-file-input" style="display: none;" accept=".json" onchange="window.app.restoreData(event)">
+                <button class="btn btn-success" onclick="document.getElementById('restore-file-input').click()"><i class="fas fa-upload"></i> Pilih & Pulihkan Data</button>
+            </div>
+        </div>
+    </section>
+    </div>
+
+    <!-- Modal: Subject Hub -->
+    <div id="subject-hub-overlay" class="hub-overlay" style="display: none;">
+        <div class="hub-container">
+            <h2 id="hub-subject-name">Subject Name</h2>
+            <p id="hub-semester-info" class="text-dim"></p>
+            <div class="hub-tabs mt-4">
+                <div class="hub-tab active" data-tab="sesi" onclick="window.app.switchHubTab('sesi')">Sesi Absensi</div>
+                <div class="hub-tab" data-tab="materi" onclick="window.app.switchHubTab('materi')">Materi</div>
+                <div class="hub-tab" data-tab="tugas" onclick="window.app.switchHubTab('tugas')">Tugas</div>
+                <div class="hub-tab" data-tab="siswa" onclick="window.app.switchHubTab('siswa')">Daftar Siswa</div>
+                <div class="hub-tab" data-tab="rekap" onclick="window.app.switchHubTab('rekap')">Rekap</div>
+            </div>
+
+            <!-- Tab: Sesi Absensi -->
+            <div id="hub-sec-sesi" class="content-section active mt-4">
+                <div id="teacher-session-control" style="display: none;">
+                    <div class="sub-panel sub-panel-blue mb-6">
+                        <div class="sub-panel-header">
+                            <i class="fas fa-plus-circle"></i>
+                            <h4>Buat Sesi Absensi Baru</h4>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                            <input type="date" id="session-date-input" class="input-field"
+                                style="flex: 1; margin-bottom: 0; min-width: 200px;">
+                            <button class="btn btn-primary" style="width: auto;" onclick="window.app.createSession()"><i
+                                    class="fas fa-plus"></i> Buat Sesi</button>
+                        </div>
+                    </div>
+                </div>
+
+                <h4 class="mb-4"><i class="fas fa-list"></i> Daftar Sesi Absensi</h4>
+                <div id="session-list-container"></div>
+            </div>
+
+            <!-- Tab: Materi -->
+            <div id="hub-sec-materi" class="content-section mt-4">
+                <div id="teacher-materi-control" style="display: none;">
+                    <div class="sub-panel sub-panel-purple mb-6">
+                        <div class="sub-panel-header">
+                            <i class="fas fa-file-upload"></i>
+                            <h4>Unggah Materi Baru</h4>
+                        </div>
+                        <input type="text" id="materi-title-input" class="input-field" placeholder="Judul Materi">
+                        <textarea id="materi-content-input" class="input-field"
+                            placeholder="Konten Materi atau Link (Drive/Youtube)" rows="3"></textarea>
+                        <div class="input-group">
+                            <label>Lampiran File (JPG, PDF, Word)</label>
+                            <input type="file" id="materi-file-input" class="input-field"
+                                accept=".jpg,.jpeg,.pdf,.doc,.docx">
+                        </div>
+                        <button class="btn btn-primary" onclick="window.app.addMaterial()"><i class="fas fa-upload"></i>
+                            Unggah Materi</button>
+                    </div>
+                </div>
+                <h4 class="mb-4"><i class="fas fa-book-open"></i> Daftar Materi</h4>
+                <div id="materi-list-container"></div>
+            </div>
+
+            <!-- Tab: Tugas -->
+            <div id="hub-sec-tugas" class="content-section mt-4">
+                <div id="teacher-tugas-control" style="display: none;">
+                    <div class="sub-panel sub-panel-orange mb-6">
+                        <div class="sub-panel-header">
+                            <i class="fas fa-tasks"></i>
+                            <h4>Buat Tugas Baru</h4>
+                        </div>
+                        <input type="text" id="tugas-title-input" class="input-field" placeholder="Judul Tugas">
+                        <textarea id="tugas-desc-input" class="input-field" placeholder="Deskripsi Tugas"
+                            rows="3"></textarea>
+                        <div class="input-group">
+                            <label>Deadline</label>
+                            <input type="datetime-local" id="tugas-deadline-input" class="input-field">
+                        </div>
+                        <div class="input-group">
+                            <label>Lampiran File Tugas (Opsional)</label>
+                            <input type="file" id="tugas-file-input" class="input-field"
+                                accept=".jpg,.jpeg,.pdf,.doc,.docx">
+                        </div>
+                        <button class="btn btn-primary" onclick="window.app.addAssignment()"><i class="fas fa-plus"></i>
+                            Buat Tugas</button>
+                    </div>
+                </div>
+                <h4 class="mb-4"><i class="fas fa-edit"></i> Daftar Tugas</h4>
+                <div id="tugas-list-container"></div>
+            </div>
+
+            <!-- Tab: Daftar Siswa -->
+            <div id="hub-sec-siswa" class="content-section mt-4">
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Foto</th>
+                                <th>Nama</th>
+                                <th>NISN</th>
+                                <th>Guru Pengampu</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hub-siswa-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab: Rekap Kehadiran -->
+            <div id="hub-sec-rekap" class="content-section mt-4">
+                <!-- Teacher View -->
+                <div id="rekap-teacher-view" style="display: none;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                        <h3 style="margin:0;"><i class="fas fa-chart-pie"></i> Rekap Kehadiran Siswa</h3>
+                        <button class="btn btn-success" style="width: auto;"
+                            onclick="window.app.downloadExcelRekap()"><i class="fas fa-file-excel"></i> Download
+                            Excel</button>
+                    </div>
+                    <div id="rekap-stats-overview" class="rekap-stats-grid mb-4"></div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nama Siswa</th>
+                                    <th>NISN</th>
+                                    <th>Hadir</th>
+                                    <th>Terlambat</th>
+                                    <th>Izin</th>
+                                    <th>Sakit</th>
+                                    <th>Alpa</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hub-rekap-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- Student View -->
+                <div id="rekap-student-view" style="display: none;">
+                    <h3 class="mb-4"><i class="fas fa-user-check"></i> Rekap Kehadiran Saya</h3>
+                    <div id="hub-student-rekap-stats" class="rekap-stats-grid mb-4"></div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Tanggal</th>
+                                    <th>Status</th>
+                                    <th>Keterangan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hub-student-rekap-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-secondary mt-6" onclick="window.app.closeSubjectHub()"><i class="fas fa-times"></i>
+                Tutup Hub</button>
+        </div>
+    </div>
+
+    <!-- Modal: Manual Attendance -->
+    <div id="manual-absen-overlay" class="modal-overlay" style="display: none;">
+        <div class="manual-modal-container">
+            <div class="manual-modal-header">
+                <div>
+                    <h2><i class="fas fa-clipboard-list"></i> Absensi Manual</h2>
+                    <p id="manual-session-info" class="text-dim"></p>
+                </div>
+                <button class="btn btn-secondary" style="width:auto;" onclick="window.app.closeManualAbsen()"><i
+                        class="fas fa-times"></i></button>
+            </div>
+            <p class="text-dim mb-4"><i class="fas fa-info-circle"></i> Siswa yang sudah scan QR otomatis bertanda
+                <strong>Hadir</strong>. Isi status untuk siswa lainnya.</p>
+            <div class="table-wrapper mb-4">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Nama Siswa</th>
+                            <th>NISN</th>
+                            <th class="text-center">HADIR</th>
+                            <th class="text-center">TERLAMBAT</th>
+                            <th class="text-center">IZIN</th>
+                            <th class="text-center">SAKIT</th>
+                            <th class="text-center">ALPA</th>
+                        </tr>
+                    </thead>
+                    <tbody id="manual-absen-body"></tbody>
+                </table>
+            </div>
+            <button class="btn btn-success" style="width: 100%;" onclick="window.app.saveManualAbsen()"><i
+                    class="fas fa-save"></i> Simpan Absensi</button>
+        </div>
+    </div>
+
+    <!-- Modal: Fullscreen QR -->
+    <div id="fullscreen-qr-overlay" class="modal-overlay" style="display: none;">
+        <div class="card text-center" style="max-width: 600px; width: 95%; margin: auto; padding: 2rem;">
+            <h2 class="mb-4"><i class="fas fa-qrcode"></i> Scan Me!</h2>
+            <p class="text-dim mb-4">Siswa: Buka portal, lalu scan QR ini untuk absensi.</p>
+            <canvas id="fullscreen-qr-canvas" style="max-width: 100%;"></canvas>
+            <div class="qr-pulse-ring"></div>
+            <button class="btn btn-danger mt-6" style="width: 100%;" onclick="window.app.closeFullscreenQR()"><i
+                    class="fas fa-times-circle"></i> Tutup QR</button>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

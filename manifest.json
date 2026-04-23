@@ -1,0 +1,21 @@
+{
+  "name": "Absensi Sekolah Cyber",
+  "short_name": "Absensi",
+  "description": "Sistem Kehadiran Cerdas & Profesional",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#6366f1",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/192?text=Absen",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://via.placeholder.com/512?text=Absensi",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
